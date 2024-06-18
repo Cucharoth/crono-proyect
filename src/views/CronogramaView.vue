@@ -9,6 +9,8 @@ import {useSessionStore} from "@/stores/SessionStore";
 import draggable from 'vuedraggable';
 import {ref} from 'vue';
 import {useAudioStore} from "@/stores/AudioStore";
+import { UserGroup } from "@/types";
+import { once } from "events";
 
 export default {
   components: { GeneralManager, TimerComponent, GeneralGroupManager, TimerGroupComponent, draggable},
@@ -28,25 +30,27 @@ export default {
   },
   data() {
     return {
+      sessionStore: useSessionStore(),
       groupStore: useGroupStore(),
       audioStore: useAudioStore(),
       tab: "",
       currentTimerIndex: 0,
-      selectedId: null,
-      groupSelected: null,
+      groupSelectedName: '' as string,
+      currentGroup: [] as UserGroup[],
       items: useSessionStore().groups,
       noGroups: true,
       drag: false,
     };
   },
   watch: {
-    selectedId(newSelectedId, _oldSelectedId) {
-      const currentGroup = useGroupStore().groups[newSelectedId.id];
-      this.groupSelected = currentGroup;
-      this.groupStore.resetAllTimers();
-      this.groupStore.paused = true;
+    groupSelectedName(newSelected, _oldSelected){
+        this.currentGroup = [this.sessionStore.groups.find((u) => u.name === this.groupSelectedName)] as unknown as UserGroup[];
+        this.groupStore.currentGroup = this.currentGroup;
+        this.groupStore.resetAllTimers();
+        this.groupStore.paused = true;
+      },
     },
-  },
+
   mounted() {
     this.setInitialGroupSelected();
   },
@@ -67,8 +71,7 @@ export default {
     setInitialGroupSelected() {
       this.noGroups = useSessionStore().groups.length === 0;
       if (!this.noGroups) {
-        this.selectedId = useGroupStore().groups[useSessionStore().groups[0].id];
-        this.groupSelected = useGroupStore().groups[useSessionStore().groups[0].id];
+        this.groupSelectedName = this.sessionStore.groups[0].name;
       }
     },
   },
@@ -126,12 +129,11 @@ export default {
         class="crono"
       >
         <div>
-          <GeneralGroupManager :group-id="groupSelected.index" />
+          <GeneralGroupManager :group-id="currentGroup[0].id" />
           <v-select
-            v-model="selectedId"
+            v-model="groupSelectedName"
             :items="items"
             item-title="name"
-            item-value="id"
             hint="Grupo seleccionado"
             label="Selecciona un grupo"
             density="compact"
@@ -139,27 +141,25 @@ export default {
             item-color="primary"
             variant="underlined"
             persistent-hint
-            return-object
             single-line
           />
         </div>
         <div
-          v-if="groupSelected"
           class="d-flex"
-        >
+        > 
           <div
-            v-for="cronograma in groupSelected.cronograma"
-            :key="cronograma.id"
+            v-for="groups in currentGroup"
+            :key="groups.id"
             class=" d-flex flex-column align-items-center justify-center"
           >
             <div
-              v-for="timer in cronograma.timers"
+              v-for="timer in groups.timers"
               :key="timer.id"
               fluid
               class="ma-3 justify-center timer-container elevation-3"
-            >
+            > 
               <TimerGroupComponent
-                :id-group="groupSelected.index"
+                :id-group="currentGroup[0].id"
                 :id-timer="timer.id"
               />
             </div>
@@ -192,5 +192,10 @@ export default {
 }
 .timer-container {
   width: 1000px;
+}
+@media (max-width: 600px) {
+    .timer-container {
+        width: 40vh !important;
+    }
 }
 </style>

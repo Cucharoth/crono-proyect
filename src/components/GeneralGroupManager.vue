@@ -2,6 +2,7 @@
 import {useGroupStore} from "@/stores/GroupStore.js";
 import {useTheme} from "vuetify";
 import {useAudioStore} from "@/stores/AudioStore";
+import { useSessionStore } from "@/stores/SessionStore";
 
 export default {
   props: {
@@ -11,6 +12,7 @@ export default {
     }
   },
   data: () => ({
+    sessionStore: useSessionStore(),
     audioStore: useAudioStore(),
     theme: useTheme(),
     audio: useAudioStore().audio,
@@ -31,10 +33,12 @@ export default {
     },
     async muteAudio() {
       (await this.audio).muted = true;
+      this.sessionStore.music = false;
       this.audioStore.muted = true;
     },
     async unMuteAudio() {
       (await this.audio).muted = false;
+      this.sessionStore.music = true;
       this.audioStore.muted = false;
     },
     generalPause() {
@@ -50,6 +54,14 @@ export default {
       this.audioStore.playing = false;
       useGroupStore().resetAllTimers();
     },
+  },
+  beforeMount() {
+    if (!this.sessionStore.music) {
+      this.audioStore.muted = true;
+      if (this.audioStore.audio_) {
+        this.audioStore.audio_.muted = true;
+      }
+    }
   }
 };
 </script>
